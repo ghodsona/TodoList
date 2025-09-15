@@ -71,6 +71,8 @@ public class ClientHandler extends Thread implements RequestHandler {
 
         User newUser = new User(username, SecurityManager.hashPassword(password));
         dataBase.getUsers().add(newUser);
+        dataBase.saveToFile();
+
         System.out.println("New user registered: " + username);
 
         return new ActionResponse(true, "Registration successful!");
