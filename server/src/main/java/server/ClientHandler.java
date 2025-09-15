@@ -6,7 +6,11 @@ import shared.Model.User;
 import shared.request.*; // استفاده از * برای وارد کردن تمام کلاس‌های درخواست
 import shared.response.ActionResponse;
 import shared.response.HiResponse;
+import shared.response.ListBoardsResponse;
 import shared.response.Response;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class ClientHandler extends Thread implements RequestHandler {
     private SocketResponseSender socketResponseSender;
@@ -74,11 +78,11 @@ public class ClientHandler extends Thread implements RequestHandler {
     }
 
     @Override
-    public Response handleCreateBoardRequest(CreateBoardRequest request) {
+    public Response handleCreateBoardRequest(CreateBoardRequest createBoardRequest) {
         if (currentUser == null) {
             return new ActionResponse(false, "Error: You must be logged in to create a board.");
         }
-        String boardName = request.getBoardName();
+        String boardName = createBoardRequest.getBoardName();
         if (boardName == null || boardName.trim().isEmpty()) {
             return new ActionResponse(false, "Error: Board name cannot be empty.");
         }
@@ -93,5 +97,23 @@ public class ClientHandler extends Thread implements RequestHandler {
 
         System.out.println("User '" + currentUser.getUsername() + "' created a new board: '" + boardName + "'");
         return new ActionResponse(true, "Board '" + boardName + "' created successfully!");
+    }
+
+
+    @Override
+    public Response handleListBoardsRequest(ListBoardsRequest request) {
+        if (currentUser == null) {
+            return new ActionResponse(false, "Error: You must be logged in to see your boards.");
+        }
+
+        List<ListBoardsResponse.BoardInfo> userBoardsInfo = new ArrayList<>();
+
+        for (Board board : dataBase.getBoards()) {
+            if (board.getMemberIds().contains(currentUser.getId())) {
+                userBoardsInfo.add(new ListBoardsResponse.BoardInfo(board.getId(), board.getName()));
+            }
+        }
+
+        return new ListBoardsResponse(userBoardsInfo);
     }
 }

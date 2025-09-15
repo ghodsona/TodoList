@@ -11,8 +11,8 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
 @JsonSubTypes({
         @JsonSubTypes.Type(value = HiResponse.class, name = "hiResponse"),
-        @JsonSubTypes.Type(value = ActionResponse.class, name = "actionResponse") // این خط رو اضافه کن
-
+        @JsonSubTypes.Type(value = ActionResponse.class, name = "actionResponse"),
+        @JsonSubTypes.Type(value = ListBoardsResponse.class, name = "listBoardsResponse")
 })
 public interface Response {
     void run(ResponseHandler responseHandler);
