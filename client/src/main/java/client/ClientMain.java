@@ -1,6 +1,7 @@
 package client;
 
 import client.socket.SocketRequestSender;
+import shared.request.CreateBoardRequest;
 import shared.request.LoginRequest;
 import shared.request.RegisterRequest;
 import shared.response.HiResponse;
@@ -11,25 +12,28 @@ import java.io.IOException;
 
 public class ClientMain implements ResponseHandler {
     public static void main(String[] args) throws IOException {
-        SocketRequestSender socketRequestSender = new SocketRequestSender();
-        ResponseHandler responseHandler = new ClientMain(); // یک نمونه از همین کلاس که قابلیت هندل کردن پاسخ رو داره
+        SocketRequestSender sender = new SocketRequestSender();
+        ResponseHandler handler = new ClientMain();
 
-        System.out.println("Sending Register Request...");
-        Response registerResponse = socketRequestSender.sendRequest(new RegisterRequest("ali", "1234"));
+        // ۱. همیشه اول برای ثبت نام تلاش کن
+        System.out.println("Attempting to register 'ali'...");
+        Response res1 = sender.sendRequest(new RegisterRequest("ali", "1234"));
+        if (res1 != null) res1.run(handler);
+        // اگه کاربر از قبل وجود داشته باشه، این مرحله خطا میده که اشکالی نداره.
 
-        if (registerResponse != null) {
-            registerResponse.run(responseHandler);
-        }
+        // ۲. حالا با همون کاربر لاگین کن
+        System.out.println("Logging in...");
+        Response loginRes = sender.sendRequest(new LoginRequest("ali", "1234"));
+        if (loginRes != null) loginRes.run(handler);
 
-        System.out.println("Sending Login Request...");
-        Response loginResponse = socketRequestSender.sendRequest(new LoginRequest("ali", "1234"));
-        if (loginResponse != null) {
-            loginResponse.run(responseHandler);
-        }
+        // ۳. اگه لاگین موفق بود، یک بورد جدید بساز
+        System.out.println("Creating a new board...");
+        Response createBoardRes = sender.sendRequest(new CreateBoardRequest("My First Project"));
+        if (createBoardRes != null) createBoardRes.run(handler);
     }
 
     @Override
     public void handleHiResponse(HiResponse hiResponse) {
-        System.out.println("yoyoyo");
+        System.out.println("Hi response handled.");
     }
 }

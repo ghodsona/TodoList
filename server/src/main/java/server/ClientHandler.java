@@ -1,11 +1,9 @@
 package server;
 
 import server.socket.SocketResponseSender;
+import shared.Model.Board;
 import shared.Model.User;
-import shared.request.HiRequest;
-import shared.request.LoginRequest;
-import shared.request.RegisterRequest;
-import shared.request.RequestHandler;
+import shared.request.*; // استفاده از * برای وارد کردن تمام کلاس‌های درخواست
 import shared.response.ActionResponse;
 import shared.response.HiResponse;
 import shared.response.Response;
@@ -13,12 +11,12 @@ import shared.response.Response;
 public class ClientHandler extends Thread implements RequestHandler {
     private SocketResponseSender socketResponseSender;
     private DataBase dataBase;
+    private User currentUser = null;
 
     public ClientHandler(SocketResponseSender socketResponseSender, DataBase dataBase) {
         this.dataBase = dataBase;
         this.socketResponseSender = socketResponseSender;
     }
-
 
     @Override
     public void run() {
@@ -28,53 +26,72 @@ public class ClientHandler extends Thread implements RequestHandler {
                 socketResponseSender.sendResponse(response);
             }
         } catch (Exception e) {
+            if (currentUser != null) {
+                System.out.println("User '" + currentUser.getUsername() + "' disconnected.");
+            } else {
+                System.out.println("A client disconnected.");
+            }
             socketResponseSender.close();
         }
     }
 
     @Override
     public Response handleHiRequest(HiRequest hiRequest) {
-        System.out.println("naisbdaVGFYDVS");
         return new HiResponse();
     }
 
     @Override
-    public Response handleLoginRequest(LoginRequest loginRequest) {
-        String username = loginRequest.getUsername();
-        String plainPassword = loginRequest.getPassword();
-
+    public Response handleRegisterRequest(RegisterRequest registerRequest) {
+        String username = registerRequest.getUsername();
         for (User user : dataBase.getUsers()) {
             if (user.getUsername().equals(username)) {
-                String hashedInputPassword = SecurityManager.hashPassword(plainPassword);
+                return new ActionResponse(false, "Username already taken!");
+            }
+        }
+        String hashedPassword = SecurityManager.hashPassword(registerRequest.getPassword());
+        User newUser = new User(username, hashedPassword);
+        dataBase.getUsers().add(newUser);
+        dataBase.saveAllData();
+        System.out.println("New user registered and saved: " + username);
+        return new ActionResponse(true, "Registration successful!");
+    }
 
+    @Override
+    public Response handleLoginRequest(LoginRequest loginRequest) {
+        for (User user : dataBase.getUsers()) {
+            if (user.getUsername().equals(loginRequest.getUsername())) {
+                String hashedInputPassword = SecurityManager.hashPassword(loginRequest.getPassword());
                 if (user.getPassword().equals(hashedInputPassword)) {
+                    this.currentUser = user;
+                    System.out.println("User '" + currentUser.getUsername() + "' logged in.");
                     return new ActionResponse(true, "Login successful! Welcome back.");
                 } else {
                     return new ActionResponse(false, "Incorrect password.");
                 }
             }
         }
-
         return new ActionResponse(false, "User not found.");
     }
 
     @Override
-    public Response handleRegisterRequest(RegisterRequest registerRequest) {
-        String username = registerRequest.getUsername();
-        String password = registerRequest.getPassword();
-
-        for (User user : dataBase.getUsers()) {
-            if (user.getUsername().equals(username)) {
-                return new ActionResponse(false, "Username already taken!");
+    public Response handleCreateBoardRequest(CreateBoardRequest request) {
+        if (currentUser == null) {
+            return new ActionResponse(false, "Error: You must be logged in to create a board.");
+        }
+        String boardName = request.getBoardName();
+        if (boardName == null || boardName.trim().isEmpty()) {
+            return new ActionResponse(false, "Error: Board name cannot be empty.");
+        }
+        for (Board existingBoard : dataBase.getBoards()) {
+            if (existingBoard.getOwnerId().equals(currentUser.getId()) && existingBoard.getName().equals(boardName)) {
+                return new ActionResponse(false, "Error: You already have a board with the name '" + boardName + "'.");
             }
         }
+        Board newBoard = new Board(boardName, currentUser.getId());
+        dataBase.getBoards().add(newBoard);
+        dataBase.saveAllData();
 
-        User newUser = new User(username, SecurityManager.hashPassword(password));
-        dataBase.getUsers().add(newUser);
-        dataBase.saveToFile();
-
-        System.out.println("New user registered: " + username);
-
-        return new ActionResponse(true, "Registration successful!");
+        System.out.println("User '" + currentUser.getUsername() + "' created a new board: '" + boardName + "'");
+        return new ActionResponse(true, "Board '" + boardName + "' created successfully!");
     }
 }
