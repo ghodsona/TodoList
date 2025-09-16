@@ -25,6 +25,16 @@
   "description" : "Use SHA-256 for hashing.",
   "boardId" : "6d388b97-c502-43e1-9bc1-529709881afc",
   "assignedUserId" : null,
+  "status" : "InProgress",
+  "priority" : "High",
+  "dueDate" : null
+}, {
+  "id" : "96d9ad8f-eb40-43a7-9b8d-5667acc21d70",
+  "createdAt" : 1758015121300,
+  "title" : "Implement Login",
+  "description" : "Use SHA-256 for hashing.",
+  "boardId" : "6d388b97-c502-43e1-9bc1-529709881afc",
+  "assignedUserId" : null,
   "status" : "ToDo",
   "priority" : "High",
   "dueDate" : null

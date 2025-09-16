@@ -7,6 +7,7 @@ import shared.response.HiResponse;
 import shared.response.Response;
 import shared.response.ResponseHandler;
 import java.io.IOException;
+import java.util.UUID;
 
 public class ClientMain implements ResponseHandler {
     public static void main(String[] args) throws IOException {
@@ -29,6 +30,18 @@ public class ClientMain implements ResponseHandler {
         System.out.println("Requesting task list for the current board...");
         Response listTasksRes = sender.sendRequest(new ListTasksRequest());
         if (listTasksRes != null) listTasksRes.run(handler);
+
+        UUID taskIdToUpdate = UUID.fromString("95bf26a5-e9b4-4676-8146-aac74010d9f0");
+
+        System.out.println("Updating task status to InProgress...");
+        Response updateRes = sender.sendRequest(
+                new UpdateTaskStatusRequest(taskIdToUpdate, Task.TaskStatus.InProgress)
+        );
+        if (updateRes != null) updateRes.run(handler);
+
+        System.out.println("Requesting task list again to see the change...");
+        Response listTasksAgainRes = sender.sendRequest(new ListTasksRequest());
+        if (listTasksAgainRes != null) listTasksAgainRes.run(handler);
     }
 
     @Override

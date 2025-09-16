@@ -238,4 +238,34 @@ public class ClientHandler extends Thread implements RequestHandler {
 
         return new ListTasksResponse(boardTasks);
     }
+
+    @Override
+    public Response handleUpdateTaskStatusRequest(UpdateTaskStatusRequest request) {
+        if (currentUser == null || currentBoard == null) {
+            return new ActionResponse(false, "Error: You must be viewing a board to update a task.");
+        }
+
+        UUID taskId = request.getTaskId();
+        Task.TaskStatus newStatus = request.getNewStatus();
+
+        Task targetTask = null;
+        for (Task task : dataBase.getTasks()) {
+            if (task.getId().equals(taskId)) {
+                targetTask = task;
+                break;
+            }
+        }
+        if (targetTask == null) {
+            return new ActionResponse(false, "Error: Task with the given ID not found.");
+        }
+        if (!targetTask.getBoardId().equals(currentBoard.getId())) {
+            return new ActionResponse(false, "Error: This task does not belong to the current board. Access denied.");
+        }
+
+        targetTask.setStatus(newStatus);
+        dataBase.saveAllData();
+
+        System.out.println("Task '" + targetTask.getTitle() + "' status updated to " + newStatus);
+        return new ActionResponse(true, "Task status updated successfully.");
+    }
 }
