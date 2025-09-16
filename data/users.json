@@ -8,4 +8,14 @@
   "createdAt" : 1757928971132,
   "username" : "ali",
   "password" : "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4"
+}, {
+  "id" : "8041e572-986e-47ec-aa0a-1cffc3b3e23f",
+  "createdAt" : 1757978599563,
+  "username" : "ownerUser",
+  "password" : "e6c3da5b206634d7f3f3586d747ffdb36b5c675757b380c6a5fe5c570c714349"
+}, {
+  "id" : "2c58491b-1a62-4827-99ec-aebc2c784afc",
+  "createdAt" : 1757978599744,
+  "username" : "memberUser",
+  "password" : "1ba3d16e9881959f8c9a9762854f72c6e6321cdd44358a10a4e939033117eab9"
 } ]

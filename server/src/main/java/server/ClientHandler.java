@@ -4,18 +4,18 @@ import server.socket.SocketResponseSender;
 import shared.Model.Board;
 import shared.Model.User;
 import shared.request.*; // استفاده از * برای وارد کردن تمام کلاس‌های درخواست
-import shared.response.ActionResponse;
-import shared.response.HiResponse;
-import shared.response.ListBoardsResponse;
-import shared.response.Response;
+import shared.response.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 public class ClientHandler extends Thread implements RequestHandler {
     private SocketResponseSender socketResponseSender;
     private DataBase dataBase;
     private User currentUser = null;
+    private Board currentBoard = null;
 
     public ClientHandler(SocketResponseSender socketResponseSender, DataBase dataBase) {
         this.dataBase = dataBase;
@@ -115,5 +115,84 @@ public class ClientHandler extends Thread implements RequestHandler {
         }
 
         return new ListBoardsResponse(userBoardsInfo);
+    }
+
+    @Override
+    public Response handleAddUserToBoardRequest(AddUserToBoardRequest request) {
+        if (currentUser == null) {
+            return new ActionResponse(false, "Error: You must be logged in.");
+        }
+
+        String boardName = request.getBoardName();
+        String usernameToAdd = request.getUsernameToAdd();
+
+        Board targetBoard = null;
+        for (Board board : dataBase.getBoards()) {
+            if (board.getName().equals(boardName) && board.getOwnerId().equals(currentUser.getId())) {
+                targetBoard = board;
+                break;
+            }
+        }
+
+        if (targetBoard == null) {
+            return new ActionResponse(false, "Error: Board with name '" + boardName + "' not found for you.");
+        }
+
+        if (!targetBoard.getOwnerId().equals(currentUser.getId())) {
+            return new ActionResponse(false, "Error: Only the board owner can add users.");
+        }
+
+        User userToAdd = null;
+        for (User user : dataBase.getUsers()) {
+            if (user.getUsername().equals(usernameToAdd)) {
+                userToAdd = user;
+                break;
+            }
+        }
+
+        if (userToAdd == null) {
+            return new ActionResponse(false, "Error: User '" + usernameToAdd + "' not found.");
+        }
+
+        if (targetBoard.getMemberIds().contains(userToAdd.getId())) {
+            return new ActionResponse(false, "Error: User '" + usernameToAdd + "' is already a member of this board.");
+        }
+
+        if (currentUser.getId().equals(userToAdd.getId())) {
+            return new ActionResponse(false, "Error: You are the owner and already a member.");
+        }
+
+        targetBoard.getMemberIds().add(userToAdd.getId());
+        dataBase.saveAllData();
+        System.out.println("User '" + currentUser.getUsername() + "' added user '" + usernameToAdd + "' to board '" + targetBoard.getName() + "'");
+        return new ActionResponse(true, "User '" + usernameToAdd + "' successfully added to the board.");
+    }
+
+    // در فایل: server/src/main/java/server/ClientHandler.java
+
+    @Override
+    public Response handleViewBoardRequest(ViewBoardRequest request) {
+        if (currentUser == null) {
+            return new ActionResponse(false, "Error: You must be logged in.");
+        }
+
+        String boardName = request.getBoardName();
+        Board targetBoard = null;
+
+        for (Board board : dataBase.getBoards()) {
+            if (board.getName().equals(boardName) && board.getMemberIds().contains(currentUser.getId())) {
+                targetBoard = board;
+                break;
+            }
+        }
+
+        if (targetBoard == null) {
+            this.currentBoard = null;
+            return new ViewBoardResponse(false, "Board '" + boardName + "' not found or you don't have access.");
+        }
+
+        this.currentBoard = targetBoard;
+        System.out.println("User '" + currentUser.getUsername() + "' is now viewing board '" + currentBoard.getName() + "'.");
+        return new ViewBoardResponse(true, "You are now viewing board: '" + targetBoard.getName() + "'.");
     }
 }

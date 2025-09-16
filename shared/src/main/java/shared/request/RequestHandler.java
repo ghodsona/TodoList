@@ -8,4 +8,6 @@ public interface RequestHandler {
     Response handleRegisterRequest(RegisterRequest registerRequest);
     Response handleCreateBoardRequest(CreateBoardRequest createBoardRequest);
     Response handleListBoardsRequest(ListBoardsRequest listBoardsRequest);
+    Response handleAddUserToBoardRequest(AddUserToBoardRequest request);
+    Response handleViewBoardRequest(ViewBoardRequest request);
 }

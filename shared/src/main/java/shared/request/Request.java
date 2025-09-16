@@ -13,7 +13,9 @@ import shared.response.Response;
         @JsonSubTypes.Type(value = LoginRequest.class, name = "loginRequest"),
         @JsonSubTypes.Type(value = RegisterRequest.class, name = "registerRequest"),
         @JsonSubTypes.Type(value = CreateBoardRequest.class, name = "createBoardRequest"),
-        @JsonSubTypes.Type(value = ListBoardsRequest.class, name = "listBoardsRequest")
+        @JsonSubTypes.Type(value = ListBoardsRequest.class, name = "listBoardsRequest"),
+        @JsonSubTypes.Type(value = AddUserToBoardRequest.class, name = "addUserToBoardRequest"),
+        @JsonSubTypes.Type(value = ViewBoardRequest.class, name = "viewBoardRequest")
 })
 public interface Request {
     Response run(RequestHandler requestHandler);

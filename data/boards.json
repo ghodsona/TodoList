@@ -10,4 +10,10 @@
   "name" : "My Second Project",
   "ownerId" : "3f6f9e1d-de17-4979-aeaf-058355c598e6",
   "memberIds" : [ "3f6f9e1d-de17-4979-aeaf-058355c598e6" ]
+}, {
+  "id" : "614c704d-0075-43c7-b25b-45078afedb76",
+  "createdAt" : 1757978599760,
+  "name" : "Team Project",
+  "ownerId" : "8041e572-986e-47ec-aa0a-1cffc3b3e23f",
+  "memberIds" : [ "8041e572-986e-47ec-aa0a-1cffc3b3e23f", "2c58491b-1a62-4827-99ec-aebc2c784afc" ]
 } ]

@@ -12,7 +12,8 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 @JsonSubTypes({
         @JsonSubTypes.Type(value = HiResponse.class, name = "hiResponse"),
         @JsonSubTypes.Type(value = ActionResponse.class, name = "actionResponse"),
-        @JsonSubTypes.Type(value = ListBoardsResponse.class, name = "listBoardsResponse")
+        @JsonSubTypes.Type(value = ListBoardsResponse.class, name = "listBoardsResponse"),
+        @JsonSubTypes.Type(value = ViewBoardResponse.class, name = "viewBoardResponse")
 })
 public interface Response {
     void run(ResponseHandler responseHandler);
