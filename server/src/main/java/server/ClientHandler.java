@@ -268,4 +268,37 @@ public class ClientHandler extends Thread implements RequestHandler {
         System.out.println("Task '" + targetTask.getTitle() + "' status updated to " + newStatus);
         return new ActionResponse(true, "Task status updated successfully.");
     }
+
+    @Override
+    public Response handleDeleteTaskRequest(DeleteTaskRequest request) {
+        if (currentUser == null || currentBoard == null) {
+            return new ActionResponse(false, "Error: You must be viewing a board to delete a task.");
+        }
+
+        UUID taskId = request.getTaskId();
+        Task targetTask = null;
+        for (Task task : dataBase.getTasks()) {
+            if (task.getId().equals(taskId)) {
+                targetTask = task;
+                break;
+            }
+        }
+
+        if (targetTask == null) {
+            return new ActionResponse(false, "Error: Task with the given ID not found.");
+        }
+        if (!targetTask.getBoardId().equals(currentBoard.getId())) {
+            return new ActionResponse(false, "Error: This task does not belong to the current board. Access denied.");
+        }
+
+        boolean removed = dataBase.getTasks().removeIf(task -> task.getId().equals(taskId));
+
+        if (removed) {
+            dataBase.saveAllData();
+            System.out.println("Task '" + targetTask.getTitle() + "' was deleted.");
+            return new ActionResponse(true, "Task deleted successfully.");
+        } else {
+            return new ActionResponse(false, "Error: Task could not be deleted.");
+        }
+    }
 }

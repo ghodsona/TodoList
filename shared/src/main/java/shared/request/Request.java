@@ -8,6 +8,7 @@ import shared.response.Response;
         use = JsonTypeInfo.Id.NAME,
         property = "subclassType"
 )
+
 @JsonSubTypes({
         @JsonSubTypes.Type(value = HiRequest.class, name = "hiRequest"),
         @JsonSubTypes.Type(value = LoginRequest.class, name = "loginRequest"),
@@ -17,6 +18,7 @@ import shared.response.Response;
         @JsonSubTypes.Type(value = AddUserToBoardRequest.class, name = "addUserToBoardRequest"),
         @JsonSubTypes.Type(value = ViewBoardRequest.class, name = "viewBoardRequest"),
         @JsonSubTypes.Type(value = AddTaskRequest.class, name = "addTaskRequest"),
+        @JsonSubTypes.Type(value = DeleteTaskRequest.class, name = "deleteTaskRequest"),
         @JsonSubTypes.Type(value = ListTasksRequest.class, name = "listTasksRequest"),
         @JsonSubTypes.Type(value = UpdateTaskStatusRequest.class, name = "updateTaskStatusRequest")
 })

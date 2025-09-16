@@ -42,6 +42,16 @@ public class ClientMain implements ResponseHandler {
         System.out.println("Requesting task list again to see the change...");
         Response listTasksAgainRes = sender.sendRequest(new ListTasksRequest());
         if (listTasksAgainRes != null) listTasksAgainRes.run(handler);
+
+        UUID taskIdToDelete = UUID.fromString("95bf26a5-e9b4-4676-8146-aac74010d9f0");
+
+        System.out.println("Deleting the task...");
+        Response deleteRes = sender.sendRequest(new DeleteTaskRequest(taskIdToDelete));
+        if (deleteRes != null) deleteRes.run(handler);
+
+        System.out.println("Requesting task list for the last time...");
+        Response finalListRes = sender.sendRequest(new ListTasksRequest());
+        if (finalListRes != null) finalListRes.run(handler);
     }
 
     @Override

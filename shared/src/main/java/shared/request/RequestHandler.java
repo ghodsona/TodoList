@@ -13,4 +13,5 @@ public interface RequestHandler {
     Response handleAddTaskRequest(AddTaskRequest request);
     Response handleListTasksRequest(ListTasksRequest request);
     Response handleUpdateTaskStatusRequest(UpdateTaskStatusRequest request);
+    Response handleDeleteTaskRequest(DeleteTaskRequest request);
 }
