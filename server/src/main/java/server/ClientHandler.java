@@ -12,10 +12,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-/**
- * نسخه نهایی و پایدار ClientHandler
- * این نسخه با استفاده صحیح از synchronized تمام مشکلات همزمانی و کرش سرور را حل میکند.
- */
 public class ClientHandler extends Thread implements RequestHandler {
     private final SocketResponseSender socketResponseSender;
     private final DataBase dataBase;
@@ -35,7 +31,6 @@ public class ClientHandler extends Thread implements RequestHandler {
                 socketResponseSender.sendResponse(response);
             }
         } catch (Exception e) {
-            // وقتی کلاینت قطع میشود، چه با دستور چه ناگهانی، باید از لیست آنلاین‌ها حذف شود
             if (currentUser != null) {
                 ClientManager.removeClient(currentUser.getId());
                 System.out.println("User '" + currentUser.getUsername() + "' disconnected.");
@@ -44,13 +39,9 @@ public class ClientHandler extends Thread implements RequestHandler {
         }
     }
 
-    /**
-     * یک پیام نوتیفیکیشن برای تمام اعضای آنلاین یک بورد ارسال میکند.
-     */
+
     private void broadcastToBoardMembers(Board board, String message, boolean excludeCurrentUser) {
         if (board == null) return;
-
-        // از لیست اعضا یک کپی تهیه میکنیم تا در حین چرخیدن روی آن، لیست اصلی تغییر نکند
         List<UUID> membersToNotify = new ArrayList<>(board.getMemberIds());
 
         for (UUID memberId : membersToNotify) {
@@ -59,7 +50,9 @@ public class ClientHandler extends Thread implements RequestHandler {
             }
             ClientHandler memberHandler = ClientManager.getClientHandler(memberId);
             if (memberHandler != null) {
-                memberHandler.socketResponseSender.sendResponse(new NotificationResponse(message));
+                new Thread(() -> {
+                    memberHandler.socketResponseSender.sendResponse(new NotificationResponse(message));
+                }).start();
             }
         }
     }
@@ -103,7 +96,7 @@ public class ClientHandler extends Thread implements RequestHandler {
     public Response handleLogoutRequest(LogoutRequest request) {
         if (currentUser != null) {
             String username = currentUser.getUsername();
-            ClientManager.removeClient(currentUser.getId()); // حذف از لیست آنلاین ها
+            ClientManager.removeClient(currentUser.getId());
             this.currentUser = null;
             this.currentBoard = null;
             System.out.println("User '" + username + "' logged out.");
@@ -175,8 +168,6 @@ public class ClientHandler extends Thread implements RequestHandler {
         return new ActionResponse(true, "Task '" + request.getTitle() + "' added successfully.");
     }
 
-    // ... سایر متدهای شما (list_boards, view_board, list_tasks, ...) اینجا قرار میگیرند ...
-    // ... آنها چون فقط اطلاعات را میخوانند، نیازی به تغییر یا synchronized ندارند ...
     @Override
     public Response handleHiRequest(HiRequest hiRequest) { return new HiResponse(); }
     @Override
