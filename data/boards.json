@@ -1,7 +1,7 @@
 [ {
-  "id" : "941cb62c-d700-4673-9d9b-82af31b49831",
-  "createdAt" : 1758030764728,
-  "name" : "AP-Project",
-  "ownerId" : "b93928b0-1730-4bd8-9e84-aae6cf0ff5e4",
-  "memberIds" : [ "b93928b0-1730-4bd8-9e84-aae6cf0ff5e4", "f9dcf37c-9adc-429b-af1e-3981abd599e2" ]
+  "id" : "df00ae7f-36ad-413b-bbdf-e0747e1fc1aa",
+  "createdAt" : 1758061575992,
+  "name" : "SharedProject",
+  "ownerId" : "2d6fd46a-f660-4dd2-a9b3-ab4843960ee4",
+  "memberIds" : [ "2d6fd46a-f660-4dd2-a9b3-ab4843960ee4", "5e297a6c-57b3-4ed8-adf0-37f1fd3a8126" ]
 } ]

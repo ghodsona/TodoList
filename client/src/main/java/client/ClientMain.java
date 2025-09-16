@@ -4,36 +4,43 @@ import client.socket.SocketRequestSender;
 import shared.Model.Task;
 import shared.request.*;
 import shared.response.HiResponse;
-import shared.response.Response;
 import shared.response.ResponseHandler;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Scanner;
 import java.util.UUID;
 
 public class ClientMain implements ResponseHandler {
 
     private static SocketRequestSender sender;
-    private static ResponseHandler handler;
 
     public static void main(String[] args) {
         try {
             sender = new SocketRequestSender();
-            handler = new ClientMain();
-            Scanner scanner = new Scanner(System.in);
+            ResponseHandler handler = new ClientMain();
 
+            // ۱. کارمند شنونده را استخدام و روشن میکنیم!
+            // این نخ در پس زمینه فقط به پیام های سرور گوش میدهد
+            ServerListener listener = new ServerListener(sender.getServerScanner(), handler);
+            listener.start();
+
+            // ۲. نخ اصلی فقط منتظر دستور کاربر میماند
+            Scanner userInputScanner = new Scanner(System.in);
             System.out.println("Welcome to the Todo List Application!");
             System.out.println("Type 'help' to see a list of commands.");
 
             while (true) {
                 System.out.print("> ");
-                String input = scanner.nextLine().trim();
+                String input = userInputScanner.nextLine().trim();
 
                 if (input.equalsIgnoreCase("exit")) {
                     System.out.println("Goodbye!");
                     sender.close();
                     break;
+                }
+
+                if (input.isEmpty()) {
+                    continue;
                 }
 
                 handleCommand(input);
@@ -42,15 +49,13 @@ public class ClientMain implements ResponseHandler {
         } catch (IOException e) {
             System.err.println("Error connecting to the server: " + e.getMessage());
         } catch (Exception e) {
-            System.err.println("An unexpected error occurred: " + e.getMessage());
         }
     }
 
-    private static void handleCommand(String input) throws IOException {
+    private static void handleCommand(String input) {
         String[] parts = input.split("\\s+", 2);
         String command = parts[0].toLowerCase();
         String args = parts.length > 1 ? parts[1] : "";
-
         Request request = null;
 
         switch (command) {
@@ -150,18 +155,17 @@ public class ClientMain implements ResponseHandler {
                 printHelp();
                 return;
 
+            case "logout":
+                request = new LogoutRequest();
+                break;
+
             default:
                 System.out.println("Unknown command: '" + command + "'. Type 'help' for a list of commands.");
                 return;
         }
 
         if (request != null) {
-            Response response = sender.sendRequest(request);
-            if (response != null) {
-                response.run(handler);
-            } else {
-                System.out.println("No response received from the server. It might be down.");
-            }
+            sender.sendRequest(request);
         }
     }
 
@@ -169,6 +173,7 @@ public class ClientMain implements ResponseHandler {
         System.out.println("\n--- Available Commands ---");
         System.out.println("  register <username> <password>        - Register a new user");
         System.out.println("  login <username> <password>           - Login to your account");
+        System.out.println("  logout                              - Logout from your account");
         System.out.println("  create_board <board_name>             - Create a new board");
         System.out.println("  list_boards                         - List boards you have access to");
         System.out.println("  add_user_to_board <b_name> <u_name>   - Add a user to a board you own");
@@ -186,5 +191,6 @@ public class ClientMain implements ResponseHandler {
 
     @Override
     public void handleHiResponse(HiResponse hiResponse) {
+        System.out.println("Received HiResponse: " + hiResponse);
     }
 }

@@ -2,8 +2,6 @@ package client.socket;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import shared.request.Request;
-import shared.response.Response;
-
 import java.io.IOException;
 import java.io.PrintStream;
 import java.net.Socket;
@@ -17,21 +15,21 @@ public class SocketRequestSender {
 
     public SocketRequestSender() throws IOException {
         this.socket = new Socket("127.0.0.1", 8080);
-        printStream = new PrintStream(socket.getOutputStream());
-        scanner = new Scanner(socket.getInputStream());
-        objectMapper = new ObjectMapper();
+        this.printStream = new PrintStream(socket.getOutputStream());
+        this.scanner = new Scanner(socket.getInputStream());
+        this.objectMapper = new ObjectMapper();
     }
 
-
-    public Response sendRequest(Request request) throws IOException {
+    public void sendRequest(Request request) {
         try {
             printStream.println(objectMapper.writeValueAsString(request));
-            return objectMapper.readValue(scanner.nextLine(), Response.class);
         } catch (Exception e) {
-            System.out.println(e);
-            close();
-            throw e;
+            System.err.println("Failed to send request: " + e.getMessage());
         }
+    }
+
+    public Scanner getServerScanner() {
+        return this.scanner;
     }
 
     public void close() {

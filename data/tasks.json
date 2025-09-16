@@ -1,11 +1,1 @@
-[ {
-  "id" : "b622149b-f52c-4dea-abb3-9a817a39a187",
-  "createdAt" : 1758030855051,
-  "title" : "Phase 1",
-  "description" : "Implement server logic",
-  "boardId" : "941cb62c-d700-4673-9d9b-82af31b49831",
-  "assignedUserId" : null,
-  "status" : "InProgress",
-  "priority" : "High",
-  "dueDate" : null
-} ]
+[ ]

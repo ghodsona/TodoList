@@ -3,11 +3,12 @@ package shared.Model;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Board extends Model {
     private String name;
     private UUID ownerId;
-    private List<UUID> memberIds = new ArrayList<>();
+    private List<UUID> memberIds = new CopyOnWriteArrayList<>();
     public Board() {}
 
     public Board(String name, UUID ownerId) {

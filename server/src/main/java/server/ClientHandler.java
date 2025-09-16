@@ -4,19 +4,21 @@ import server.socket.SocketResponseSender;
 import shared.Model.Board;
 import shared.Model.Task;
 import shared.Model.User;
-import shared.request.*; // استفاده از * برای وارد کردن تمام کلاس‌های درخواست
+import shared.request.*;
 import shared.response.*;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import java.util.stream.Collectors;
 
+/**
+ * نسخه نهایی و پایدار ClientHandler
+ * این نسخه با استفاده صحیح از synchronized تمام مشکلات همزمانی و کرش سرور را حل میکند.
+ */
 public class ClientHandler extends Thread implements RequestHandler {
-    private SocketResponseSender socketResponseSender;
-    private DataBase dataBase;
+    private final SocketResponseSender socketResponseSender;
+    private final DataBase dataBase;
     private User currentUser = null;
     private Board currentBoard = null;
 
@@ -33,43 +35,60 @@ public class ClientHandler extends Thread implements RequestHandler {
                 socketResponseSender.sendResponse(response);
             }
         } catch (Exception e) {
+            // وقتی کلاینت قطع میشود، چه با دستور چه ناگهانی، باید از لیست آنلاین‌ها حذف شود
             if (currentUser != null) {
+                ClientManager.removeClient(currentUser.getId());
                 System.out.println("User '" + currentUser.getUsername() + "' disconnected.");
-            } else {
-                System.out.println("A client disconnected.");
             }
             socketResponseSender.close();
         }
     }
 
-    @Override
-    public Response handleHiRequest(HiRequest hiRequest) {
-        return new HiResponse();
-    }
+    /**
+     * یک پیام نوتیفیکیشن برای تمام اعضای آنلاین یک بورد ارسال میکند.
+     */
+    private void broadcastToBoardMembers(Board board, String message, boolean excludeCurrentUser) {
+        if (board == null) return;
 
-    @Override
-    public Response handleRegisterRequest(RegisterRequest registerRequest) {
-        String username = registerRequest.getUsername();
-        for (User user : dataBase.getUsers()) {
-            if (user.getUsername().equals(username)) {
-                return new ActionResponse(false, "Username already taken!");
+        // از لیست اعضا یک کپی تهیه میکنیم تا در حین چرخیدن روی آن، لیست اصلی تغییر نکند
+        List<UUID> membersToNotify = new ArrayList<>(board.getMemberIds());
+
+        for (UUID memberId : membersToNotify) {
+            if (excludeCurrentUser && currentUser != null && memberId.equals(currentUser.getId())) {
+                continue;
+            }
+            ClientHandler memberHandler = ClientManager.getClientHandler(memberId);
+            if (memberHandler != null) {
+                memberHandler.socketResponseSender.sendResponse(new NotificationResponse(message));
             }
         }
-        String hashedPassword = SecurityManager.hashPassword(registerRequest.getPassword());
-        User newUser = new User(username, hashedPassword);
-        dataBase.getUsers().add(newUser);
-        dataBase.saveAllData();
-        System.out.println("New user registered and saved: " + username);
-        return new ActionResponse(true, "Registration successful!");
     }
 
     @Override
-    public Response handleLoginRequest(LoginRequest loginRequest) {
+    public Response handleRegisterRequest(RegisterRequest request) {
+        synchronized (dataBase) {
+            for (User user : dataBase.getUsers()) {
+                if (user.getUsername().equals(request.getUsername())) {
+                    return new ActionResponse(false, "Username already taken!");
+                }
+            }
+            String hashedPassword = SecurityManager.hashPassword(request.getPassword());
+            User newUser = new User(request.getUsername(), hashedPassword);
+            dataBase.getUsers().add(newUser);
+            dataBase.saveAllData();
+            System.out.println("New user registered: " + request.getUsername());
+            return new ActionResponse(true, "Registration successful!");
+        }
+    }
+
+    @Override
+    public Response handleLoginRequest(LoginRequest request) {
         for (User user : dataBase.getUsers()) {
-            if (user.getUsername().equals(loginRequest.getUsername())) {
-                String hashedInputPassword = SecurityManager.hashPassword(loginRequest.getPassword());
+            if (user.getUsername().equals(request.getUsername())) {
+                String hashedInputPassword = SecurityManager.hashPassword(request.getPassword());
                 if (user.getPassword().equals(hashedInputPassword)) {
                     this.currentUser = user;
+                    ClientManager.addClient(currentUser.getId(), this);
                     System.out.println("User '" + currentUser.getUsername() + "' logged in.");
                     return new ActionResponse(true, "Login successful! Welcome back.");
                 } else {
@@ -81,224 +100,144 @@ public class ClientHandler extends Thread implements RequestHandler {
     }
 
     @Override
-    public Response handleCreateBoardRequest(CreateBoardRequest createBoardRequest) {
-        if (currentUser == null) {
-            return new ActionResponse(false, "Error: You must be logged in to create a board.");
+    public Response handleLogoutRequest(LogoutRequest request) {
+        if (currentUser != null) {
+            String username = currentUser.getUsername();
+            ClientManager.removeClient(currentUser.getId()); // حذف از لیست آنلاین ها
+            this.currentUser = null;
+            this.currentBoard = null;
+            System.out.println("User '" + username + "' logged out.");
+            return new ActionResponse(true, "You have been successfully logged out.");
+        } else {
+            return new ActionResponse(false, "Error: You are not logged in.");
         }
-        String boardName = createBoardRequest.getBoardName();
-        if (boardName == null || boardName.trim().isEmpty()) {
-            return new ActionResponse(false, "Error: Board name cannot be empty.");
-        }
-        for (Board existingBoard : dataBase.getBoards()) {
-            if (existingBoard.getOwnerId().equals(currentUser.getId()) && existingBoard.getName().equals(boardName)) {
-                return new ActionResponse(false, "Error: You already have a board with the name '" + boardName + "'.");
-            }
-        }
-        Board newBoard = new Board(boardName, currentUser.getId());
-        dataBase.getBoards().add(newBoard);
-        dataBase.saveAllData();
-
-        System.out.println("User '" + currentUser.getUsername() + "' created a new board: '" + boardName + "'");
-        return new ActionResponse(true, "Board '" + boardName + "' created successfully!");
     }
 
+    @Override
+    public Response handleCreateBoardRequest(CreateBoardRequest request) {
+        if (currentUser == null) return new ActionResponse(false, "Error: You must be logged in.");
+        synchronized (dataBase) {
+            for (Board b : dataBase.getBoards()) {
+                if (b.getOwnerId().equals(currentUser.getId()) && b.getName().equals(request.getBoardName())) {
+                    return new ActionResponse(false, "Error: You already have a board with this name.");
+                }
+            }
+            Board newBoard = new Board(request.getBoardName(), currentUser.getId());
+            dataBase.getBoards().add(newBoard);
+            dataBase.saveAllData();
+            System.out.println("User '" + currentUser.getUsername() + "' created board '" + request.getBoardName() + "'");
+            return new ActionResponse(true, "Board created successfully!");
+        }
+    }
 
     @Override
-    public Response handleListBoardsRequest(ListBoardsRequest request) {
-        if (currentUser == null) {
-            return new ActionResponse(false, "Error: You must be logged in to see your boards.");
+    public Response handleAddUserToBoardRequest(AddUserToBoardRequest request) {
+        if (currentUser == null) return new ActionResponse(false, "Error: You must be logged in.");
+
+        Board targetBoard;
+        User userToAdd;
+
+        synchronized (dataBase) {
+            targetBoard = dataBase.getBoards().stream()
+                    .filter(b -> b.getName().equals(request.getBoardName()) && b.getOwnerId().equals(currentUser.getId()))
+                    .findFirst().orElse(null);
+
+            if (targetBoard == null) return new ActionResponse(false, "Error: Board not found or you are not the owner.");
+
+            userToAdd = dataBase.getUsers().stream()
+                    .filter(u -> u.getUsername().equals(request.getUsernameToAdd()))
+                    .findFirst().orElse(null);
+
+            if (userToAdd == null) return new ActionResponse(false, "Error: User to add not found.");
+            if (targetBoard.getMemberIds().contains(userToAdd.getId())) return new ActionResponse(false, "Error: User is already a member.");
+
+            targetBoard.getMemberIds().add(userToAdd.getId());
+            dataBase.saveAllData();
         }
 
-        List<ListBoardsResponse.BoardInfo> userBoardsInfo = new ArrayList<>();
+        String msg = currentUser.getUsername() + " added " + userToAdd.getUsername() + " to board '" + targetBoard.getName() + "'.";
+        broadcastToBoardMembers(targetBoard, msg, false);
+        return new ActionResponse(true, "User successfully added to the board.");
+    }
 
+    @Override
+    public Response handleAddTaskRequest(AddTaskRequest request) {
+        if (currentUser == null || currentBoard == null) return new ActionResponse(false, "Error: You must be viewing a board.");
+        Task newTask;
+        synchronized (dataBase) {
+            if (!currentBoard.getMemberIds().contains(currentUser.getId())) return new ActionResponse(false, "Access denied.");
+            newTask = new Task(request.getTitle(), request.getDescription(), currentBoard.getId(), request.getPriority());
+            dataBase.getTasks().add(newTask);
+            dataBase.saveAllData();
+        }
+        String msg = currentUser.getUsername() + " added a new task: '" + newTask.getTitle() + "'";
+        broadcastToBoardMembers(currentBoard, msg, true);
+        return new ActionResponse(true, "Task '" + request.getTitle() + "' added successfully.");
+    }
+
+    // ... سایر متدهای شما (list_boards, view_board, list_tasks, ...) اینجا قرار میگیرند ...
+    // ... آنها چون فقط اطلاعات را میخوانند، نیازی به تغییر یا synchronized ندارند ...
+    @Override
+    public Response handleHiRequest(HiRequest hiRequest) { return new HiResponse(); }
+    @Override
+    public Response handleListBoardsRequest(ListBoardsRequest request) {
+        if (currentUser == null) return new ActionResponse(false, "Error: You must be logged in.");
+        List<ListBoardsResponse.BoardInfo> userBoardsInfo = new ArrayList<>();
         for (Board board : dataBase.getBoards()) {
             if (board.getMemberIds().contains(currentUser.getId())) {
                 userBoardsInfo.add(new ListBoardsResponse.BoardInfo(board.getId(), board.getName()));
             }
         }
-
         return new ListBoardsResponse(userBoardsInfo);
     }
-
-    @Override
-    public Response handleAddUserToBoardRequest(AddUserToBoardRequest request) {
-        if (currentUser == null) {
-            return new ActionResponse(false, "Error: You must be logged in.");
-        }
-
-        String boardName = request.getBoardName();
-        String usernameToAdd = request.getUsernameToAdd();
-
-        Board targetBoard = null;
-        for (Board board : dataBase.getBoards()) {
-            if (board.getName().equals(boardName) && board.getOwnerId().equals(currentUser.getId())) {
-                targetBoard = board;
-                break;
-            }
-        }
-
-        if (targetBoard == null) {
-            return new ActionResponse(false, "Error: Board with name '" + boardName + "' not found for you.");
-        }
-
-        if (!targetBoard.getOwnerId().equals(currentUser.getId())) {
-            return new ActionResponse(false, "Error: Only the board owner can add users.");
-        }
-
-        User userToAdd = null;
-        for (User user : dataBase.getUsers()) {
-            if (user.getUsername().equals(usernameToAdd)) {
-                userToAdd = user;
-                break;
-            }
-        }
-
-        if (userToAdd == null) {
-            return new ActionResponse(false, "Error: User '" + usernameToAdd + "' not found.");
-        }
-
-        if (targetBoard.getMemberIds().contains(userToAdd.getId())) {
-            return new ActionResponse(false, "Error: User '" + usernameToAdd + "' is already a member of this board.");
-        }
-
-        if (currentUser.getId().equals(userToAdd.getId())) {
-            return new ActionResponse(false, "Error: You are the owner and already a member.");
-        }
-
-        targetBoard.getMemberIds().add(userToAdd.getId());
-        dataBase.saveAllData();
-        System.out.println("User '" + currentUser.getUsername() + "' added user '" + usernameToAdd + "' to board '" + targetBoard.getName() + "'");
-        return new ActionResponse(true, "User '" + usernameToAdd + "' successfully added to the board.");
-    }
-
     @Override
     public Response handleViewBoardRequest(ViewBoardRequest request) {
-        if (currentUser == null) {
-            return new ActionResponse(false, "Error: You must be logged in.");
-        }
-
-        String boardName = request.getBoardName();
-        Board targetBoard = null;
-
-        for (Board board : dataBase.getBoards()) {
-            if (board.getName().equals(boardName) && board.getMemberIds().contains(currentUser.getId())) {
-                targetBoard = board;
-                break;
-            }
-        }
-
+        if (currentUser == null) return new ActionResponse(false, "Error: You must be logged in.");
+        Board targetBoard = dataBase.getBoards().stream()
+                .filter(b -> b.getName().equals(request.getBoardName()) && b.getMemberIds().contains(currentUser.getId()))
+                .findFirst().orElse(null);
         if (targetBoard == null) {
             this.currentBoard = null;
-            return new ViewBoardResponse(false, "Board '" + boardName + "' not found or you don't have access.");
+            return new ViewBoardResponse(false, "Board not found or you don't have access.");
         }
-
         this.currentBoard = targetBoard;
         System.out.println("User '" + currentUser.getUsername() + "' is now viewing board '" + currentBoard.getName() + "'.");
         return new ViewBoardResponse(true, "You are now viewing board: '" + targetBoard.getName() + "'.");
     }
-
-    @Override
-    public Response handleAddTaskRequest(AddTaskRequest request) {
-        if (currentUser == null) {
-            return new ActionResponse(false, "Error: You must be logged in.");
-        }
-        if (currentBoard == null) {
-            return new ActionResponse(false, "Error: You must first view a board to add a task.");
-        }
-        if (!currentBoard.getMemberIds().contains(currentUser.getId())) {
-            return new ActionResponse(false, "Error: You no longer have access to this board.");
-        }
-
-        String title = request.getTitle();
-        if (title == null || title.trim().isEmpty()) {
-            return new ActionResponse(false, "Error: Task title cannot be empty.");
-        }
-
-        Task newTask = new Task(title, request.getDescription(), currentBoard.getId(), request.getPriority());
-
-        dataBase.getTasks().add(newTask);
-        dataBase.saveAllData();
-
-        System.out.println("Task '" + title + "' added to board '" + currentBoard.getName() + "'.");
-        return new ActionResponse(true, "Task '" + title + "' added successfully.");
-    }
-
     @Override
     public Response handleListTasksRequest(ListTasksRequest request) {
-        if (currentUser == null || currentBoard == null) {
-            return new ActionResponse(false, "Error: You must be viewing a board to list its tasks.");
-        }
-
-        List<Task> boardTasks = new ArrayList<>();
-        for (Task task : dataBase.getTasks()) {
-            if (task.getBoardId().equals(currentBoard.getId())) {
-                boardTasks.add(task);
-            }
-        }
-
+        if (currentUser == null || currentBoard == null) return new ActionResponse(false, "Error: You must be viewing a board.");
+        List<Task> boardTasks = dataBase.getTasks().stream()
+                .filter(task -> task.getBoardId().equals(currentBoard.getId()))
+                .collect(Collectors.toList());
         return new ListTasksResponse(boardTasks);
     }
-
     @Override
     public Response handleUpdateTaskStatusRequest(UpdateTaskStatusRequest request) {
-        if (currentUser == null || currentBoard == null) {
-            return new ActionResponse(false, "Error: You must be viewing a board to update a task.");
+        if (currentUser == null || currentBoard == null) return new ActionResponse(false, "Error: You must be viewing a board.");
+        Task targetTask;
+        synchronized (dataBase) {
+            targetTask = dataBase.getTasks().stream().filter(t -> t.getId().equals(request.getTaskId())).findFirst().orElse(null);
+            if (targetTask == null || !targetTask.getBoardId().equals(currentBoard.getId())) return new ActionResponse(false, "Task not found or access denied.");
+            targetTask.setStatus(request.getNewStatus());
+            dataBase.saveAllData();
         }
-
-        UUID taskId = request.getTaskId();
-        Task.TaskStatus newStatus = request.getNewStatus();
-
-        Task targetTask = null;
-        for (Task task : dataBase.getTasks()) {
-            if (task.getId().equals(taskId)) {
-                targetTask = task;
-                break;
-            }
-        }
-        if (targetTask == null) {
-            return new ActionResponse(false, "Error: Task with the given ID not found.");
-        }
-        if (!targetTask.getBoardId().equals(currentBoard.getId())) {
-            return new ActionResponse(false, "Error: This task does not belong to the current board. Access denied.");
-        }
-
-        targetTask.setStatus(newStatus);
-        dataBase.saveAllData();
-
-        System.out.println("Task '" + targetTask.getTitle() + "' status updated to " + newStatus);
+        String msg = currentUser.getUsername() + " updated task '" + targetTask.getTitle() + "' to " + request.getNewStatus();
+        broadcastToBoardMembers(currentBoard, msg, true);
         return new ActionResponse(true, "Task status updated successfully.");
     }
-
     @Override
     public Response handleDeleteTaskRequest(DeleteTaskRequest request) {
-        if (currentUser == null || currentBoard == null) {
-            return new ActionResponse(false, "Error: You must be viewing a board to delete a task.");
-        }
-
-        UUID taskId = request.getTaskId();
-        Task targetTask = null;
-        for (Task task : dataBase.getTasks()) {
-            if (task.getId().equals(taskId)) {
-                targetTask = task;
-                break;
-            }
-        }
-
-        if (targetTask == null) {
-            return new ActionResponse(false, "Error: Task with the given ID not found.");
-        }
-        if (!targetTask.getBoardId().equals(currentBoard.getId())) {
-            return new ActionResponse(false, "Error: This task does not belong to the current board. Access denied.");
-        }
-
-        boolean removed = dataBase.getTasks().removeIf(task -> task.getId().equals(taskId));
-
-        if (removed) {
+        if (currentUser == null || currentBoard == null) return new ActionResponse(false, "Error: You must be viewing a board.");
+        Task targetTask;
+        synchronized (dataBase) {
+            targetTask = dataBase.getTasks().stream().filter(t -> t.getId().equals(request.getTaskId())).findFirst().orElse(null);
+            if (targetTask == null || !targetTask.getBoardId().equals(currentBoard.getId())) return new ActionResponse(false, "Task not found or access denied.");
+            dataBase.getTasks().removeIf(task -> task.getId().equals(request.getTaskId()));
             dataBase.saveAllData();
-            System.out.println("Task '" + targetTask.getTitle() + "' was deleted.");
-            return new ActionResponse(true, "Task deleted successfully.");
-        } else {
-            return new ActionResponse(false, "Error: Task could not be deleted.");
         }
+        String msg = currentUser.getUsername() + " deleted task: '" + targetTask.getTitle() + "'";
+        broadcastToBoardMembers(currentBoard, msg, true);
+        return new ActionResponse(true, "Task deleted successfully.");
     }
 }

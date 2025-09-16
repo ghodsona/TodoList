@@ -20,7 +20,8 @@ import shared.response.Response;
         @JsonSubTypes.Type(value = AddTaskRequest.class, name = "addTaskRequest"),
         @JsonSubTypes.Type(value = DeleteTaskRequest.class, name = "deleteTaskRequest"),
         @JsonSubTypes.Type(value = ListTasksRequest.class, name = "listTasksRequest"),
-        @JsonSubTypes.Type(value = UpdateTaskStatusRequest.class, name = "updateTaskStatusRequest")
+        @JsonSubTypes.Type(value = UpdateTaskStatusRequest.class, name = "updateTaskStatusRequest"),
+        @JsonSubTypes.Type(value = LogoutRequest.class, name = "logoutRequest")
 })
 public interface Request {
     Response run(RequestHandler requestHandler);
