@@ -10,4 +10,5 @@ public interface RequestHandler {
     Response handleListBoardsRequest(ListBoardsRequest listBoardsRequest);
     Response handleAddUserToBoardRequest(AddUserToBoardRequest request);
     Response handleViewBoardRequest(ViewBoardRequest request);
+    Response handleAddTaskRequest(AddTaskRequest request);
 }

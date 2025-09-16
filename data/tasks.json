@@ -1,1 +1,11 @@
-[ ]
+[ {
+  "id" : "f48c1502-6089-4f93-a6d5-46db844e9ce7",
+  "createdAt" : 1758013153043,
+  "title" : "Implement Login",
+  "description" : "Use SHA-256 for hashing.",
+  "boardId" : "6d388b97-c502-43e1-9bc1-529709881afc",
+  "assignedUserId" : null,
+  "status" : "ToDo",
+  "priority" : "High",
+  "dueDate" : null
+} ]

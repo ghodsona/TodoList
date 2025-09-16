@@ -2,6 +2,7 @@ package server;
 
 import server.socket.SocketResponseSender;
 import shared.Model.Board;
+import shared.Model.Task;
 import shared.Model.User;
 import shared.request.*; // استفاده از * برای وارد کردن تمام کلاس‌های درخواست
 import shared.response.*;
@@ -194,5 +195,33 @@ public class ClientHandler extends Thread implements RequestHandler {
         this.currentBoard = targetBoard;
         System.out.println("User '" + currentUser.getUsername() + "' is now viewing board '" + currentBoard.getName() + "'.");
         return new ViewBoardResponse(true, "You are now viewing board: '" + targetBoard.getName() + "'.");
+    }
+
+    // در فایل: server/src/main/java/server/ClientHandler.java
+
+    @Override
+    public Response handleAddTaskRequest(AddTaskRequest request) {
+        if (currentUser == null) {
+            return new ActionResponse(false, "Error: You must be logged in.");
+        }
+        if (currentBoard == null) {
+            return new ActionResponse(false, "Error: You must first view a board to add a task.");
+        }
+        if (!currentBoard.getMemberIds().contains(currentUser.getId())) {
+            return new ActionResponse(false, "Error: You no longer have access to this board.");
+        }
+
+        String title = request.getTitle();
+        if (title == null || title.trim().isEmpty()) {
+            return new ActionResponse(false, "Error: Task title cannot be empty.");
+        }
+
+        Task newTask = new Task(title, request.getDescription(), currentBoard.getId(), request.getPriority());
+
+        dataBase.getTasks().add(newTask);
+        dataBase.saveAllData();
+
+        System.out.println("Task '" + title + "' added to board '" + currentBoard.getName() + "'.");
+        return new ActionResponse(true, "Task '" + title + "' added successfully.");
     }
 }

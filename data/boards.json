@@ -16,4 +16,10 @@
   "name" : "Team Project",
   "ownerId" : "8041e572-986e-47ec-aa0a-1cffc3b3e23f",
   "memberIds" : [ "8041e572-986e-47ec-aa0a-1cffc3b3e23f", "2c58491b-1a62-4827-99ec-aebc2c784afc" ]
+}, {
+  "id" : "6d388b97-c502-43e1-9bc1-529709881afc",
+  "createdAt" : 1758013153009,
+  "name" : "Final Project",
+  "ownerId" : "4bda6c24-d41e-4e27-b221-745d872298d6",
+  "memberIds" : [ "4bda6c24-d41e-4e27-b221-745d872298d6" ]
 } ]
