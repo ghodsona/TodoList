@@ -26,6 +26,9 @@ public class ClientMain implements ResponseHandler {
         );
 
         if (addTaskRes != null) addTaskRes.run(handler);
+        System.out.println("Requesting task list for the current board...");
+        Response listTasksRes = sender.sendRequest(new ListTasksRequest());
+        if (listTasksRes != null) listTasksRes.run(handler);
     }
 
     @Override

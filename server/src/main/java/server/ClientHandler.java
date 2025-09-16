@@ -11,6 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Collectors;
 
 public class ClientHandler extends Thread implements RequestHandler {
     private SocketResponseSender socketResponseSender;
@@ -169,8 +171,6 @@ public class ClientHandler extends Thread implements RequestHandler {
         return new ActionResponse(true, "User '" + usernameToAdd + "' successfully added to the board.");
     }
 
-    // در فایل: server/src/main/java/server/ClientHandler.java
-
     @Override
     public Response handleViewBoardRequest(ViewBoardRequest request) {
         if (currentUser == null) {
@@ -197,8 +197,6 @@ public class ClientHandler extends Thread implements RequestHandler {
         return new ViewBoardResponse(true, "You are now viewing board: '" + targetBoard.getName() + "'.");
     }
 
-    // در فایل: server/src/main/java/server/ClientHandler.java
-
     @Override
     public Response handleAddTaskRequest(AddTaskRequest request) {
         if (currentUser == null) {
@@ -223,5 +221,21 @@ public class ClientHandler extends Thread implements RequestHandler {
 
         System.out.println("Task '" + title + "' added to board '" + currentBoard.getName() + "'.");
         return new ActionResponse(true, "Task '" + title + "' added successfully.");
+    }
+
+    @Override
+    public Response handleListTasksRequest(ListTasksRequest request) {
+        if (currentUser == null || currentBoard == null) {
+            return new ActionResponse(false, "Error: You must be viewing a board to list its tasks.");
+        }
+
+        List<Task> boardTasks = new ArrayList<>();
+        for (Task task : dataBase.getTasks()) {
+            if (task.getBoardId().equals(currentBoard.getId())) {
+                boardTasks.add(task);
+            }
+        }
+
+        return new ListTasksResponse(boardTasks);
     }
 }
